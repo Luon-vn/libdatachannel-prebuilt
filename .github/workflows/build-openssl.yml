@@ -1,11 +1,35 @@
 name: Build with OpenSSL
+
 on:
-  push:
-    branches:
-    - master
-  pull_request:
+  issues:
+    types: [opened, reopened, closed]
+  issue_comment:
+    types: [created, edited, deleted]
+
 jobs:
+  create_release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    outputs:
+      release_tag: ${{ steps.tag.outputs.release_tag }}
+    steps:
+      - name: Generate release tag
+        id: tag
+        run: |
+          sudo timedatectl set-timezone Asia/Ho_Chi_Minh
+          sudo date -s "$(wget -qSO- --max-redirect=0 google.com 2>&1 | grep Date: | cut -d' ' -f5-8)Z"
+          echo "release_tag=Build_$(date +"%Y.%m.%d_%H-%M-%S")" >> $GITHUB_OUTPUT
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.tag.outputs.release_tag }}
+          draft: false
+          prerelease: false
+          generate_release_notes: false
+
   build-linux:
+    needs: create_release
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -14,12 +38,29 @@ jobs:
     - name: submodules
       run: git submodule update --init --recursive --depth 1
     - name: cmake
-      run: cmake -B build -DUSE_GNUTLS=0 -DUSE_SYSTEM_SRTP=1 -DWARNINGS_AS_ERRORS=1
+      run: cmake -B build -DUSE_GNUTLS=0 -DUSE_SYSTEM_SRTP=1 -DWARNINGS_AS_ERRORS=1 -DNO_MEDIA=1 -DNO_WEBSOCKET=1
     - name: make
-      run: (cd build; make -j2)
+      run: (cd build; make -j2; make -j2 datachannel-static)
     - name: test
       run: ./build/tests
+    # Create release
+    - name: Rename file
+      run: |
+        find ./build/ -type f -exec sh -c 'f="{}" ; mv "$f" "${f%/*}/linux-x64-openssl-nomedia-nows-${f##*/}"' \;
+        find ./build/
+        zip include.zip include/ -r
+    - name: Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ needs.create_release.outputs.release_tag }}
+        files: |
+          ./build/linux-*.so*
+          ./build/linux-*static.a*
+          ./include.zip
+    # Done release
+
   build-macos:
+    needs: create_release
     runs-on: macos-latest
     steps:
     - uses: actions/checkout@v2
@@ -28,14 +69,29 @@ jobs:
     - name: submodules
       run: git submodule update --init --recursive --depth 1
     - name: cmake
-      run: cmake -B build -DUSE_GNUTLS=0 -WARNINGS_AS_ERRORS=1 -DENABLE_LOCAL_ADDRESS_TRANSLATION=1
+      run: cmake -B build -DUSE_GNUTLS=0 -WARNINGS_AS_ERRORS=1 -DENABLE_LOCAL_ADDRESS_TRANSLATION=1 -DNO_MEDIA=1 -DNO_WEBSOCKET=1
       env:
         OPENSSL_ROOT_DIR: /usr/local/opt/openssl@1.1
     - name: make
-      run: (cd build; make -j2)
+      run: (cd build; make -j2; make -j2 datachannel-static)
     - name: test
       run: ./build/tests
+    # Create release
+    - name: Rename file
+      run: |
+        find ./build/ -type f -exec sh -c 'f="{}" ; mv "$f" "${f%/*}/darwin-x64-openssl-nomedia-nows-${f##*/}"' \;
+        find ./build
+    - name: Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ needs.create_release.outputs.release_tag }}
+        files: |
+          ./build/darwin-*.dylib*
+          ./build/darwin-*static.a*
+    # Done release
+
   build-windows:
+    needs: create_release
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v2
@@ -45,12 +101,26 @@ jobs:
     - name: submodules
       run: git submodule update --init --recursive --depth 1
     - name: cmake
-      run: cmake -B build -G "NMake Makefiles" -DUSE_GNUTLS=0 -DWARNINGS_AS_ERRORS=1
+      run: cmake -B build -G "NMake Makefiles" -DUSE_GNUTLS=0 -DWARNINGS_AS_ERRORS=1 -DNO_MEDIA=1 -DNO_WEBSOCKET=1
     - name: nmake
       run: |
         cd build
         set CL=/MP
         nmake
+        nmake datachannel-static
     - name: test
       run: build/tests.exe
-
+    # Create release
+    - name: Rename file
+      run: |
+        Get-ChildItem -Recurse -File ./build/ | Rename-Item -NewName { "windows-x64-openssl-nomedia-nows-"+$_.Name }
+        Get-ChildItem -Recurse -File ./build/
+    - name: Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ needs.create_release.outputs.release_tag }}
+        files: |
+          ./build/windows-*datachannel*.pdb*
+          ./build/windows-*datachannel*.lib*
+          ./build/windows-*datachannel*.dll*
+    # Done release
