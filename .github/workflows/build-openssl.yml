@@ -34,7 +34,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: install packages
-      run: sudo apt update && sudo apt install libssl-dev libsrtp2-dev
+      run: sudo apt update && sudo apt install libssl-dev libsrtp2-dev && find / -type f -name "libcrypto.a"
     - name: submodules
       run: git submodule update --init --recursive --depth 1
     - name: cmake
@@ -65,7 +65,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: install packages
-      run: HOMEBREW_NO_INSTALL_CLEANUP=1 brew reinstall openssl@1.1
+      run: HOMEBREW_NO_INSTALL_CLEANUP=1 brew reinstall openssl@1.1 && find / -type f -name "libcrypto.a"
     - name: submodules
       run: git submodule update --init --recursive --depth 1
     - name: cmake
