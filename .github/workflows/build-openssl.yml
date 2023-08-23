@@ -34,7 +34,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: install packages
-      run: sudo apt update && sudo apt install libssl-dev libsrtp2-dev && find / -type f -name "libcrypto.a"
+      run: sudo apt update && sudo apt install libssl-dev libsrtp2-dev
     - name: submodules
       run: git submodule update --init --recursive --depth 1
     - name: cmake
@@ -65,11 +65,11 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: install packages
-      run: HOMEBREW_NO_INSTALL_CLEANUP=1 brew reinstall openssl@1.1 && find / -type f -name "libcrypto.a"
+      run: HOMEBREW_NO_INSTALL_CLEANUP=1 brew reinstall openssl@1.1
     - name: submodules
       run: git submodule update --init --recursive --depth 1
     - name: cmake
-      run: cmake -B build -DOPENSSL_USE_STATIC_LIBS=1  -DUSE_GNUTLS=0 -WARNINGS_AS_ERRORS=1 -DENABLE_LOCAL_ADDRESS_TRANSLATION=1 -DNO_MEDIA=1 -DNO_WEBSOCKET=1
+      run: cmake -B build -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl@1.1/ -DOPENSSL_USE_STATIC_LIBS=1  -DUSE_GNUTLS=0 -WARNINGS_AS_ERRORS=1 -DENABLE_LOCAL_ADDRESS_TRANSLATION=1 -DNO_MEDIA=1 -DNO_WEBSOCKET=1
       env:
         OPENSSL_ROOT_DIR: /usr/local/opt/openssl@1.1
     - name: make
