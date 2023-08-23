@@ -49,6 +49,9 @@ list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/Modules)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(BUILD_SHARED_LIBS OFF) # to force usrsctp to be built static
 
+set(OPENSSL_USE_STATIC_LIBS TRUE)
+find_package(OpenSSL REQUIRED)
+
 if(WIN32)
 	add_definitions(-DWIN32_LEAN_AND_MEAN)
 	if(MSVC)
